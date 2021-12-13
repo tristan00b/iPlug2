@@ -18,6 +18,8 @@ class IVideoFrame
     virtual void resize_img(int wantw, int wanth, int wantfmt)=0;
 
     virtual INT_PTR Extended(int code, INT_PTR parm1, INT_PTR parm2, void* parm3) { return 0; }
+  protected:
+    virtual ~IVideoFrame() { }
 };
 
 
