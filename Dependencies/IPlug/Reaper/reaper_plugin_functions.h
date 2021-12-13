@@ -48,7 +48,11 @@
 //   before including this file. You must put these definitions where REAPERAPI_IMPLEMENT is defined
 //   and you can optionally put them elsewhere (to detect needed REAPERAPI_WANT_xxx lines at compile-
 //   time rather than link-time).
-//   
+//
+
+// REAPERAPI_LoadAPI modified for lambda ... thanks Xenakios
+#include <functional>
+
 #if !defined(_LICE_H) && !defined(REAPERAPI_NO_LICE)
 typedef unsigned int LICE_pixel;
 typedef unsigned char LICE_pixel_chan;
