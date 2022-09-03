@@ -672,7 +672,16 @@ static AUAudioUnitPreset* NewAUPreset(NSInteger number, NSString* pName)
     }
     else if (currentPreset.name != nil)
     {
-      self->mCurrentPreset = currentPreset;
+      // Set the currentPreset after successfully restoring the state.
+      NSError* err = nil;
+      self.fullState = [self presetStateFor: currentPreset error: &err];
+      
+      if (err == nil)
+      {
+        self->mCurrentPreset = currentPreset;
+        self->mPlug->OnRestoreState();
+      }
+      
     }
   });
 }
@@ -765,6 +774,11 @@ static AUAudioUnitPreset* NewAUPreset(NSInteger number, NSString* pName)
 #endif
   
 //  [super setFullState: newFullState]; // this hangs auval
+}
+
+- (BOOL) supportsUserPresets
+{
+  return YES;
 }
 
 - (NSIndexSet*) supportedViewConfigurations:(NSArray<AUAudioUnitViewConfiguration*>*) availableViewConfigurations API_AVAILABLE(macos(10.13), ios(11))
@@ -872,6 +886,11 @@ static AUAudioUnitPreset* NewAUPreset(NSInteger number, NSString* pName)
   void* pData = mPlug->GetDataFromExternal(dataSize);
   
   return [NSData dataWithBytes:pData length:dataSize];
+}
+
+- (NSArray<AUAudioUnitPreset*>*) getUserPresets
+{
+  return [self userPresets];
 }
 
 @end

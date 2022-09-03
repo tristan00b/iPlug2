@@ -84,6 +84,8 @@ public:
    * the data must exist!
    */
   virtual void* GetDataFromExternal(int& dataSize) { return nullptr; }
+  
+  void GetListOfAUv3UserPresets(std::vector<std::string>& presetNames);
 
 private:
   // void HandleOneEvent(AURenderEvent const* event, int64_t startTime);
