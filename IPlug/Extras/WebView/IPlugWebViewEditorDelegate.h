@@ -22,6 +22,7 @@
 #endif
 
 #include <functional>
+#include <filesystem>
 
 BEGIN_IPLUG_NAMESPACE
 
@@ -199,8 +200,21 @@ public:
   }
   
   bool GetEnableDevTools() const { return mEnableDevTools; }
+  
+  void LoadIndexHtml(const char* pathOfPluginSrc)
+  {
+#ifdef _DEBUG
+    namespace fs = std::filesystem;
+    
+    fs::path mainPath(pathOfPluginSrc);
+    fs::path indexRelativePath = mainPath.parent_path() / "Resources" / "web" / "index.html";
 
-protected:
+    LoadFile(indexRelativePath.string().c_str(), nullptr, true);
+#else
+    LoadFile("index.html", GetBundleID(), true); // TODO: make this work for windows
+#endif
+  }
+  
 private:
   void ResizeWebViewAndHelper(float width, float height);
   
