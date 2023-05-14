@@ -134,7 +134,7 @@ bool IPlugCLAP::SendMidiMsg(const IMidiMsg& msg)
 
 bool IPlugCLAP::SendSysEx(const ISysEx& msg)
 {
-  mSysExToHost.PushFromArgs(msg.mOffset, msg.mSize, msg.mData);
+  mSysExToHost.Add(msg);
   return true;
 }
 
@@ -596,75 +596,89 @@ void IPlugCLAP::ProcessOutputParams(const clap_output_events *outputParamChanges
 
 void IPlugCLAP::ProcessOutputEvents(const clap_output_events *outputEvents, int nFrames) noexcept
 {
-  // TODO - ordering of events!!!
-  // N.B. Midi events are ordered by the queue
-  // However, sysex messsages are not restricted in this way (is there a good solution?)
-  
-  SysExData data;
-  
+  // N.B. Midi events and sysEx events are ordered by the respective queues
+  // Here we ensure correct ordering between the two queues
+  // Parameters can only be sent at the start of each block so are processed first
+    
   ProcessOutputParams(outputEvents);
   
   if (outputEvents)
   {
     clap_event_header_t header;
 
-    while (mMidiToHost.ToDo())
+    while (mMidiToHost.ToDo() || mSysExToHost.ToDo())
     {
-      auto msg = mMidiToHost.Peek();
-      auto status = msg.mStatus;
+      int midiMsgOffset = nFrames;
+      int sysExOffset = nFrames;
       
+      // Look at the next two items to ensure correct ordering
+      
+      if (mMidiToHost.ToDo())
+        midiMsgOffset = mMidiToHost.Peek().mOffset;
+        
+      if (mSysExToHost.ToDo())
+        sysExOffset = mMidiToHost.Peek().mOffset;
+        
       // Don't move beyond the current frame
       
-      if (msg.mOffset > nFrames)
+      if (std::min(midiMsgOffset, sysExOffset) >= nFrames)
         break;
       
-      // Construct output stream
-      
-      header.size = sizeof(clap_event_param_value);
-      header.time = msg.mOffset;
-      header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-      header.type = CLAP_EVENT_MIDI;
-      header.flags = 0;
-      
-      if (msg.StatusMsg() == IMidiMsg::kNoteOn)
-        header.type = CLAP_EVENT_NOTE_ON;
-      
-      if (msg.StatusMsg() == IMidiMsg::kNoteOff)
-        header.type = CLAP_EVENT_NOTE_OFF;
-
-      if (header.type == CLAP_EVENT_NOTE_ON || header.type == CLAP_EVENT_NOTE_OFF)
+      if (sysExOffset <= midiMsgOffset)
       {
-        int16_t channel = static_cast<int16_t>(msg.Channel());
-        clap_event_note note_event { header, -1, 0,  channel, msg.mData1, static_cast<double>(msg.mData2) / 127.0};
-        outputEvents->try_push(outputEvents, &note_event.header);
+        auto data = mSysExToHost.Peek();
+        
+        uint32_t dataSize = static_cast<uint32_t>(data.mSize);
+        
+        header.size = sizeof(clap_event_midi_sysex);
+        header.time = data.mOffset;
+        header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        header.type = CLAP_EVENT_MIDI_SYSEX;
+        header.flags = 0;
+        
+        clap_event_midi_sysex sysex_event { header, 0, data.mData, dataSize };
+        
+        outputEvents->try_push(outputEvents, &sysex_event.header);
+        
+        mSysExToHost.Remove();
       }
       else
       {
-        clap_event_midi midi_event { header, 0, { status, msg.mData1, msg.mData2 } };
-        outputEvents->try_push(outputEvents, &midi_event.header);
+        auto msg = mMidiToHost.Peek();
+        auto status = msg.mStatus;
+    
+        // Construct output stream
+        
+        header.size = sizeof(clap_event_param_value);
+        header.time = msg.mOffset;
+        header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        header.type = CLAP_EVENT_MIDI;
+        header.flags = 0;
+        
+        if (msg.StatusMsg() == IMidiMsg::kNoteOn)
+          header.type = CLAP_EVENT_NOTE_ON;
+        
+        if (msg.StatusMsg() == IMidiMsg::kNoteOff)
+          header.type = CLAP_EVENT_NOTE_OFF;
+
+        if (header.type == CLAP_EVENT_NOTE_ON || header.type == CLAP_EVENT_NOTE_OFF)
+        {
+          int16_t channel = static_cast<int16_t>(msg.Channel());
+          clap_event_note note_event { header, -1, 0,  channel, msg.mData1, static_cast<double>(msg.mData2) / 127.0};
+          outputEvents->try_push(outputEvents, &note_event.header);
+        }
+        else
+        {
+          clap_event_midi midi_event { header, 0, { status, msg.mData1, msg.mData2 } };
+          outputEvents->try_push(outputEvents, &midi_event.header);
+        }
+        
+        mMidiToHost.Remove();
       }
-      
-      mMidiToHost.Remove();
     }
     
     mMidiToHost.Flush(nFrames);
-
-    // TODO - NB. Pop will copy
-    
-    while (mSysExToHost.Pop(data))
-    {
-      uint32_t dataSize = static_cast<uint32_t>(data.mSize);
-      
-      header.size = sizeof(clap_event_midi_sysex);
-      header.time = data.mOffset;
-      header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-      header.type = CLAP_EVENT_MIDI_SYSEX;
-      header.flags = 0;
-      
-      clap_event_midi_sysex sysex_event { header, 0, data.mData, dataSize };
-      
-      outputEvents->try_push(outputEvents, &sysex_event.header);
-    }
+    mSysExToHost.Flush(nFrames);
   }
 }
 

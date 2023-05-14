@@ -231,7 +231,7 @@ private:
   uint32_t NChannels(ERoute direction, uint32_t bus, int configIdx) const;
   
   IPlugQueue<ParamToHost> mParamValuesToHost {PARAM_TRANSFER_SIZE};
-  IPlugQueue<SysExData> mSysExToHost {SYSEX_TRANSFER_SIZE};
+  ISysExQueue mSysExToHost;
   IMidiQueue mMidiToHost;
   WDL_TypedBuf<float *> mAudioIO32;
   WDL_TypedBuf<double *> mAudioIO64;
