@@ -617,7 +617,7 @@ void IPlugCLAP::ProcessOutputEvents(const clap_output_events *outputEvents, int 
         midiMsgOffset = mMidiToHost.Peek().mOffset;
         
       if (mSysExToHost.ToDo())
-        sysExOffset = mMidiToHost.Peek().mOffset;
+        sysExOffset = mSysExToHost.Peek().mOffset;
         
       // Don't move beyond the current frame
       
