@@ -134,7 +134,10 @@ bool IPlugCLAP::SendMidiMsg(const IMidiMsg& msg)
 
 bool IPlugCLAP::SendSysEx(const ISysEx& msg)
 {
-  mSysExToHost.Add(msg);
+  // TODO - double copy
+  
+  SysExData data(msg.mOffset, msg.mSize, msg.mData);
+  mSysExToHost.Add(data);
   return true;
 }
 

@@ -598,7 +598,7 @@ struct ISysEx
 
 IMidiQueueBase is a template adapted by Alex Harker from the following source
 It has been adapted to allow different types (e.g. IMidiMsg or ISysEx)
-It is then mapped to IMidiQueue and ISysExQueue as aliases
+It is then mapped to IMidiQueue as an alias
  
  (c) Theo Niessink 2009-2011
 <http://www.taletn.com/>
@@ -808,6 +808,5 @@ protected:
 };
 
 using IMidiQueue = IMidiQueueBase<IMidiMsg>;
-using ISysExQueue = IMidiQueueBase<ISysEx>;
 
 END_IPLUG_NAMESPACE
