@@ -237,7 +237,7 @@ clap_process_status IPlugCLAP::process(const clap_process *process) noexcept
   
   while (mSysExDataFromEditor.Pop(sysEx))
   {
-    ProcessSysEx(ISysEx(sysEx.mOffset, sysEx.mData, sysEx.mSize) );
+    SendSysEx(ISysEx(sysEx.mOffset, sysEx.mData, sysEx.mSize));
   }
   
   // Do Audio Processing!
