@@ -34,7 +34,7 @@ struct InstanceInfo
 
 // Set the level of host checking based on if this is debug build
 
-#ifdef DEBUG
+#ifdef _DEBUG
 using ClapPluginHelper = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
 using ClapHost = clap::helpers::HostProxy<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
 #else
