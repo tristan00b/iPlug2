@@ -27,7 +27,7 @@ BEGIN_IGRAPHICS_NAMESPACE
 class IPlatformViewControl : public IControl, public IPlatformView
 {
 public:
-  /** Constructs am IWebViewControl
+  /** Constructs an IPlatformViewControl
    * @param bounds The control's bounds
    * @param opaque Should the web view background be opaque */
   IPlatformViewControl(const IRECT& bounds, bool opaque)
@@ -36,7 +36,7 @@ public:
   {
   }
   
-  ~ISwiftViewControl()
+  ~IPlatformViewControl()
   {
     GetUI()->RemovePlatformView(mPlatformView);
     mPlatformView = nullptr;
