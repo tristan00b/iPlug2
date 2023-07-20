@@ -301,6 +301,10 @@ void IWebView::LoadFile(const char* fileName, const char* bundleID, bool /*useCu
     }
 
     WDL_String baseName{fileName};
+    WDL_String root{fileName};
+    root.remove_filepart();
+    mWebRoot.Set(root.Get());
+
     WDL_String fullStr;
     fullStr.SetFormatted(MAX_WIN32_PATH_LEN, "https://iplug.example/%s", baseName.get_filepart());
     // fullStr.SetFormatted(MAX_WIN32_PATH_LEN, useCustomScheme ? "iplug://%s" : "file://%s", fileName);
