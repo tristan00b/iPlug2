@@ -221,7 +221,7 @@ public:
 
     auto choosePresetFunc = [&](IControl* pCaller) {
       CheckSelectedItem();
-      mMainMenu.SetChosenItemIdx(mSelectedIndex);
+//      mMainMenu.SetChosenItemIdx(mSelectedIndex);
       pCaller->GetUI()->CreatePopupMenu(*this, mMainMenu, pCaller->GetRECT());
     };
 
@@ -235,9 +235,9 @@ public:
   {
     if (mSelectedIndex > -1 && mSelectedIndex < mItems.GetSize())
     {
-      WDL_String fileName, path;
+      WDL_String fileName;
       GetSelectedFile(fileName);
-      mPresetNameButton->SetLabelStr(fileName.Get());
+      mPresetNameButton->SetLabelStr(fileName.get_filepart());
     }
   }
 
