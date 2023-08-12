@@ -8,7 +8,9 @@
  ==============================================================================
 */
 
+#include <algorithm>
 #include <cstdio>
+
 #include "IPlugCLAP.h"
 #include "IPlugPluginBase.h"
 #include "plugin.hxx"
@@ -158,6 +160,9 @@ bool IPlugCLAP::activate(double sampleRate, uint32_t minFrameCount, uint32_t max
   OnParamReset(kReset);
   OnReset();
 
+  mHostHasTail = GetClapHost().canUseTail();
+  mTailCount = 0;
+
   return true;
 }
 
@@ -180,6 +185,16 @@ template <typename T>
 const T* ClapEventCast(const clap_event_header_t *event)
 {
   return reinterpret_cast<const T*>(event);
+}
+
+template <typename T>
+bool InputIsSilent(const T* data, int nFrames)
+{
+  // For local tail processing find non-zero inputs
+
+  auto isZero = [](T x) { return x == T(0); };
+
+  return std::find_if_not(data, data + nFrames, isZero) == (data + nFrames);
 }
 
 clap_process_status IPlugCLAP::process(const clap_process *process) noexcept
@@ -245,7 +260,12 @@ clap_process_status IPlugCLAP::process(const clap_process *process) noexcept
   int nIns = 0;
   int nOuts = 0;
   int nFrames = process->frames_count;
-
+  
+  // Local tail handling
+  
+  bool localTail = !mHostHasTail && !GetTailIsInfinite() && GetTailSize();
+  bool insQuiet = true;
+  
   // Sum IO channels
   
   for (uint32_t i = 0; i < process->audio_inputs_count; i++)
@@ -291,8 +311,16 @@ clap_process_status IPlugCLAP::process(const clap_process *process) noexcept
       for (uint32_t i = 0, k = 0; i < process->audio_inputs_count; i++)
       {
         auto bus = process->audio_inputs[i];
+        
         for (uint32_t j = 0; j < bus.channel_count; j++, k++)
+        {
           mAudioIO64.Get()[k] = bus.data64[j];
+          
+          // For local tail processing check for non-zero inputs
+
+          if (localTail && insQuiet)
+            insQuiet = InputIsSilent(bus.data64[j], nFrames);
+        }
       }
       
       AttachBuffers(ERoute::kInput, 0, nIns, mAudioIO64.Get(), nFrames);
@@ -302,8 +330,16 @@ clap_process_status IPlugCLAP::process(const clap_process *process) noexcept
       for (uint32_t i = 0, k = 0; i < process->audio_inputs_count; i++)
       {
         auto bus = process->audio_inputs[i];
+
         for (uint32_t j = 0; j < bus.channel_count; j++, k++)
+        {
           mAudioIO32.Get()[k] = bus.data32[j];
+          
+          // For local tail processing check for non-zero inputs
+          
+          if (localTail && insQuiet)
+            insQuiet = InputIsSilent(bus.data32[j], nFrames);
+        }
       }
       
       AttachBuffers(ERoute::kInput, 0, nIns, mAudioIO32.Get(), nFrames);
@@ -350,13 +386,34 @@ clap_process_status IPlugCLAP::process(const clap_process *process) noexcept
     
   ProcessOutputEvents(process->out_events, nFrames);
   
+  // Update tail if relevant
+  
   if (mTailUpdate)
   {
     GetClapHost().tailChanged();
     mTailUpdate = false;
   }
   
-  return CLAP_PROCESS_TAIL; // CLAP_PROCESS_CONTINUE; // TODO - review - is this allowed if tail is not supported?
+  // Local tail handling
+  
+  if (mHostHasTail)
+    return CLAP_PROCESS_TAIL;
+  
+  // No tail
+  
+  if (!GetTailSize())
+    return CLAP_PROCESS_CONTINUE_IF_NOT_QUIET;
+  
+  // Infinite tail
+  
+  if (GetTailIsInfinite())
+    return CLAP_PROCESS_CONTINUE;
+  
+  // Finite tail
+  
+  mTailCount = insQuiet ? std::min(mTailCount + nFrames, GetTailSize()) : 0;
+  
+  return mTailCount < GetTailSize() ? CLAP_PROCESS_CONTINUE : CLAP_PROCESS_SLEEP;
 }
 
 // clap_plugin_render

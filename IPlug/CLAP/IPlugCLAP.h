@@ -236,6 +236,8 @@ private:
   WDL_TypedBuf<float *> mAudioIO32;
   WDL_TypedBuf<double *> mAudioIO64;
   int mConfigIdx = 0;
+  int mTailCount = 0;
+  bool mHostHasTail = false;
   bool mTailUpdate = false;
   bool mLatencyUpdate = false;
 };
