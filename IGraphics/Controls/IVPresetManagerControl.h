@@ -160,9 +160,12 @@ private:
 class IVDiskPresetManagerControl : public IDirBrowseControlBase
 {
 public:
-  IVDiskPresetManagerControl(const IRECT& bounds, const char* presetPath, const char* fileExtension, bool showFileExtensions = true, const IVStyle& style = DEFAULT_STYLE)
+  using OnLoadFunc = std::function<void(const WDL_String& path)>;
+  
+  IVDiskPresetManagerControl(const IRECT& bounds, const char* presetPath, const char* fileExtension, bool showFileExtensions = true, const IVStyle& style = DEFAULT_STYLE, OnLoadFunc onLoadFunc = nullptr)
   : IDirBrowseControlBase(bounds, fileExtension, showFileExtensions)
   , mStyle(style)
+  , mOnLoadFunc(onLoadFunc)
   {
     mIgnoreMouse = true;
     AddPath(presetPath, "");
@@ -238,12 +241,16 @@ public:
       WDL_String fileName;
       GetSelectedFile(fileName);
       mPresetNameButton->SetLabelStr(fileName.get_filepart());
+      
+      if (mOnLoadFunc)
+        mOnLoadFunc(fileName);
     }
   }
 
 private:
   IVButtonControl* mPresetNameButton = nullptr;
   IVStyle mStyle;
+  OnLoadFunc mOnLoadFunc;
 };
 
 END_IGRAPHICS_NAMESPACE
