@@ -1,7 +1,7 @@
 #include "IPlugEffect.h"
 #include "IPlug_include_in_plug_src.h"
 #include "IControls.h"
-#include "IVTabbedPagesControl.h"
+#include <filesystem>
 
 IPlugEffect::IPlugEffect(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -15,47 +15,27 @@ IPlugEffect::IPlugEffect(const InstanceInfo& info)
   
   mLayoutFunc = [&](IGraphics* pGraphics) {
     pGraphics->AttachCornerResizer(EUIResizerMode::Scale, false);
-    pGraphics->AttachPanelBackground(COLOR_GRAY);
-    pGraphics->AttachBubbleControl();
+    pGraphics->AttachPanelBackground(COLOR_WHITE);
     pGraphics->LoadFont("Roboto-Regular", ROBOTO_FN);
-    
     const IRECT b = pGraphics->GetBounds();
     
-    auto resizeFunc = [](IContainerBase* pCaller, const IRECT& r) {
-      auto innerBounds = r.GetPadded(-10);
-      pCaller->GetChild(0)->SetTargetAndDrawRECTs(innerBounds.SubRectHorizontal(3 , 0));
-    };
+    WDL_String resourcePath;
+    #ifdef OS_MAC
+    BundleResourcePath(resourcePath, BUNDLE_ID);
+    #else
+    namespace fs = std::filesystem;
+    fs::path mainPath(__FILE__);
+    fs::path imgResourcesPath = mainPath.parent_path() / "Resources" / "img";
+    resourcePath.Set(imgResourcesPath.string().c_str());
+    #endif
     
-    auto subControls = std::map<const char*, IVTabbedPageBase*>
-    {
-      {"1", new IVTabbedPageBase([](IContainerBase* pParent, const IRECT& r) {
-        pParent->AddChildControl(new IVKnobControlWithMarks(IRECT(), kGain, "Knob"))
-        ->SetActionFunction(ShowBubbleHorizontalActionFunc);
-      }, resizeFunc)},
-      {"2", new IVTabbedPageBase([](IContainerBase* pParent, const IRECT& r) {
-        pParent->AddChildControl(new IVSliderControlWithMarks(IRECT(), kGain, "Slider"))
-        ->SetActionFunction(ShowBubbleHorizontalActionFunc);
-      }, resizeFunc)},
-      {"3", new IVTabbedPageBase([resizeFunc](IContainerBase* pParent, const IRECT& r) {
-      }, resizeFunc)}
-    };
-    
-    pGraphics->AttachControl(new IVTabbedPagesControl(b.GetPadded(-10).FracRectVertical(0.5, true),
-    {
-      {"1", new IVTabbedPageBase([](IContainerBase* pParent, const IRECT& r) {
-        pParent->AddChildControl(new IVKnobControlWithMarks(IRECT(), kGain, "Knob"))
-                                  ->SetActionFunction(ShowBubbleHorizontalActionFunc);
-                                }, resizeFunc)},
-      {"2", new IVTabbedPageBase([](IContainerBase* pParent, const IRECT& r) {
-        pParent->AddChildControl(new IVSliderControlWithMarks(IRECT(), kGain, "Slider"))
-                                  ->SetActionFunction(ShowBubbleHorizontalActionFunc);
-                                }, resizeFunc)},
-      {"3", new IVTabbedPageBase([subControls](IContainerBase* pParent, const IRECT& r) {
-        pParent->AddChildControl(new IVTabbedPagesControl(r.GetPadded(-10).FracRectVertical(0.5, true), subControls));
-      }, resizeFunc)}
+    auto bmp = pGraphics->LoadBitmap(KNOB01_FN, 100);
+    pGraphics->AttachControl(new IBKnobControl(b.GetCentredInside(100), bmp, kGain), 0);
+  
+    pGraphics->AttachControl(new IVDiskPresetManagerControl(b.GetFromTop(40), resourcePath.Get(), "png", true, DEFAULT_STYLE, [pGraphics](const WDL_String& path){
+      auto bmp = pGraphics->LoadBitmap(path.Get(), 100);
+      pGraphics->GetControlWithTag(0)->As<IBKnobControl>()->SetBitmap(bmp);
     }));
-    
-    pGraphics->AttachControl(new IVSliderControlWithMarks(b.GetFromBottom(100), kGain, "Horizontal", DEFAULT_STYLE, true, EDirection::Horizontal));
   };
 #endif
 }
